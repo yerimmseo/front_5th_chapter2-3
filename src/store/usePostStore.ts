@@ -6,11 +6,13 @@ const usePostStore = create((set, get) => ({
   selectedPost: null,
   loading: false,
 
+  setSelectedPost: (post) => set({ selectedPost: post }),
+
   fetchPosts: async (limit, skip) => {
     set({ loading: true })
     try {
       const response = await fetch(`/api/posts?limit=${limit}&skip=${skip}`)
-      const data = response.json()
+      const data = await response.json()
 
       set({ posts: data.posts, total: data.total, loading: false })
 
@@ -49,6 +51,7 @@ const usePostStore = create((set, get) => ({
     try {
       const response = await fetch(`/api/posts/tag/${tag}`)
       const data = await response.json()
+
       set({ posts: data.posts, total: data.total, loading: false })
     } catch (error) {
       console.error("태그별 게시물 가져오기 오류:", error)
@@ -57,7 +60,7 @@ const usePostStore = create((set, get) => ({
     }
   },
 
-  addPosts: async (newPost) => {
+  addPost: async (newPost) => {
     try {
       const response = await fetch("/api/posts/add", {
         method: "POST",
@@ -65,6 +68,7 @@ const usePostStore = create((set, get) => ({
         body: JSON.stringify(newPost),
       })
       const data = await response.json()
+
       set((state) => ({ posts: [data, ...state.posts] }))
 
       return data
@@ -83,6 +87,7 @@ const usePostStore = create((set, get) => ({
         body: JSON.stringify(selectedPost),
       })
       const data = await response.json()
+
       set((state) => ({
         posts: state.posts.map((post) => (post.id === data.id ? data : post)),
       }))
@@ -100,6 +105,7 @@ const usePostStore = create((set, get) => ({
       await fetch(`/api/posts/${id}`, {
         method: "DELETE",
       })
+
       set((state) => ({
         posts: state.posts.filter((post) => post.id !== id),
       }))
@@ -107,8 +113,6 @@ const usePostStore = create((set, get) => ({
       console.error("게시물 삭제 오류:", error)
     }
   },
-
-  setSelectedPost: (post) => set({ selectedPost: post }),
 }))
 
 export default usePostStore
