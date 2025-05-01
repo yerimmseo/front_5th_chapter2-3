@@ -1,3 +1,5 @@
+import { User } from "@/entities/user/model/type"
+
 export interface Post {
   id?: number
   title: string
@@ -6,9 +8,16 @@ export interface Post {
   views?: number
   userId: number
   reactions?: Reactions
+  author?: User
 }
 
-export type Reactions = {
+export interface Reactions {
   dislikes: number
   likes: number
+}
+
+export interface Tag {
+  name: string
+  slug: string
+  url: string
 }

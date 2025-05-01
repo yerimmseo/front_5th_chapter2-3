@@ -1,12 +1,24 @@
-import { useState } from "react"
-import useControlStore from "../../store/useControlStore"
-import usePostStore from "../../store/usePostStore"
-import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Textarea } from "../../shared/ui"
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Textarea,
+} from "@/shared/ui"
+import { usePostEditStore } from "../store/store"
+import { addPost } from "../api/addPost"
 
-const AddPostDialog = () => {
-  const { addPost } = usePostStore()
-  const { showAddDialog, setShowAddDialog } = useControlStore()
-  const [newPost, setNewPost] = useState({ title: "", body: "", userId: 1 })
+export const AddPostDialog = () => {
+  const { newPost, showAddDialog, setNewPost, setShowAddDialog, resetNewPost } =
+    usePostEditStore()
+
+  const handleSubmit = async () => {
+    await addPost(newPost)
+    setShowAddDialog(false)
+    resetNewPost()
+  }
 
   return (
     <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
@@ -30,13 +42,13 @@ const AddPostDialog = () => {
             type="number"
             placeholder="사용자 ID"
             value={newPost.userId}
-            onChange={(e) => setNewPost({ ...newPost, userId: Number(e.target.value) })}
+            onChange={(e) =>
+              setNewPost({ ...newPost, userId: Number(e.target.value) })
+            }
           />
-          <Button onClick={addPost}>게시물 추가</Button>
+          <Button onClick={handleSubmit}>게시물 추가</Button>
         </div>
       </DialogContent>
     </Dialog>
   )
 }
-
-export default AddPostDialog

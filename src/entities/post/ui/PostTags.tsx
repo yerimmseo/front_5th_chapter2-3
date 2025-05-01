@@ -1,10 +1,14 @@
 interface PostTagsProps {
-  tags: string[]
+  tags?: string[]
   selectedTag?: string
   onTagClick?: (tag: string) => void
 }
 
-export const PostTags = ({ tags, selectedTag, onTagClick }: PostTagsProps) => {
+export const PostTags = ({
+  tags = [],
+  selectedTag,
+  onTagClick,
+}: PostTagsProps) => {
   return (
     <div className="flex flex-wrap gap-1">
       {tags.map((tag) => (

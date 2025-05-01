@@ -2,14 +2,14 @@ import { User } from "../model/type"
 
 interface UserCellProps {
   user: User
-  onClick: (userId: number) => void
+  onClick: (user: User) => void
 }
 
 export const UserCell = ({ user, onClick }: UserCellProps) => {
   return (
     <div
       className="flex items-center space-x-2 cursor-pointer"
-      onClick={() => onClick(user.id)}
+      onClick={() => onClick(user)}
     >
       <img
         src={user.image}

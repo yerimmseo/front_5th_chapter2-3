@@ -11,7 +11,7 @@ export interface User {
   company?: Company
 }
 
-export type Address = {
+export interface Address {
   address: string
   city: string
   coordinates: Coordinates
@@ -21,12 +21,12 @@ export type Address = {
   stateCode: string
 }
 
-export type Coordinates = {
+export interface Coordinates {
   lat: number
   lng: number
 }
 
-export type Company = {
+export interface Company {
   address: Address
   department: string
   name: string

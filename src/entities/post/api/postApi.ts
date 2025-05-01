@@ -8,6 +8,13 @@ export const postApi = {
     return data
   },
 
+  fetchTags: async () => {
+    const response = await fetch("/api/posts/tags")
+    const data = await response.json()
+
+    return data
+  },
+
   fetchPostsByTag: async (tag: string) => {
     const response = await fetch(`/api/posts/tag/${tag}`)
     const data = await response.json()
