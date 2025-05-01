@@ -8,9 +8,9 @@ const useCommentStore = create((set, get) => ({
   setSelectedComment: (comment) => set({ selectedComment: comment }),
 
   fetchComments: async (postId) => {
-    if (get().comments[postId]) {
-      return
-    }
+    // if (get().comments[postId]) {
+    //   return
+    // }
 
     try {
       const response = await fetch(`/api/comments/post/${postId}`)
@@ -22,12 +22,13 @@ const useCommentStore = create((set, get) => ({
     }
   },
 
-  addComment: async (newComment) => {
+  addComment: async (newComment, selectedPost) => {
+    // {...newComment, postId: selectedPost.id} 개선 필요
     try {
       const response = await fetch("/api/comments/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newComment),
+        body: JSON.stringify({ ...newComment, postId: selectedPost.id }),
       })
       const data = await response.json()
 
@@ -41,12 +42,12 @@ const useCommentStore = create((set, get) => ({
     }
   },
 
-  updateComment: async (selectedComment) => {
+  updateComment: async () => {
     try {
-      const response = await fetch(`/api/comments/${selectedComment.id}`, {
+      const response = await fetch(`/api/comments/${get().selectedComment.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: selectedComment.body }),
+        body: JSON.stringify({ body: get().selectedComment.body }),
       })
       const data = await response.json()
 
@@ -58,6 +59,7 @@ const useCommentStore = create((set, get) => ({
       }))
 
       return data
+      // dialog 닫는 옵션 필요
     } catch (error) {
       console.error("댓글 업데이트 오류:", error)
     }

@@ -25,15 +25,6 @@ import {
   TableRow,
   Textarea,
 } from "../shared/ui"
-import PostTable from "./PostTable"
-import usePostStore from "../store/usePostStore"
-import useUserStore from "../store/useUserStore"
-import useControlStore from "../store/useControlStore"
-import UserModal from "./dialog/UserModal"
-import PostDetailDialog from "./dialog/PostDetailDialog"
-import EditCommentDialog from "./dialog/EditCommentDialog"
-import AddCommentDialog from "./dialog/AddComentDialog"
-import EditPostDialog from "./dialog/EditPostDialog"
 
 const PostsManager = () => {
   const navigate = useNavigate()
@@ -62,22 +53,14 @@ const PostsManager = () => {
   const [newComment, setNewComment] = useState({ body: "", postId: null, userId: 1 })
 
   const [showAddDialog, setShowAddDialog] = useState(false)
+  const [showEditDialog, setShowEditDialog] = useState(false)
+  const [showAddCommentDialog, setShowAddCommentDialog] = useState(false)
+  const [showEditCommentDialog, setShowEditCommentDialog] = useState(false)
+  const [showPostDetailDialog, setShowPostDetailDialog] = useState(false)
 
-  //  ------
-  const { fetchPosts } = usePostStore()
-  const { fetchUsers } = useUserStore()
-  const {
-    showEditDialog,
-    setShowEditDialog,
-    showAddCommentDialog,
-    setShowAddCommentDialog,
-    showEditCommentDialog,
-    setShowEditCommentDialog,
-    showPostDetailDialog,
-    setShowPostDetailDialog,
-    showUserModal,
-    setShowUserModal,
-  } = useControlStore()
+  const [showUserModal, setShowUserModal] = useState(false)
+
+  const [selectedUser, setSelectedUser] = useState(null)
 
   // URL 업데이트 함수
   const updateURL = () => {
@@ -89,6 +72,36 @@ const PostsManager = () => {
     if (sortOrder) params.set("sortOrder", sortOrder)
     if (selectedTag) params.set("tag", selectedTag)
     navigate(`?${params.toString()}`)
+  }
+
+  // 게시물 가져오기
+  const fetchPosts = () => {
+    setLoading(true)
+    let postsData
+    let usersData
+
+    fetch(`/api/posts?limit=${limit}&skip=${skip}`)
+      .then((response) => response.json())
+      .then((data) => {
+        postsData = data
+        return fetch("/api/users?limit=0&select=username,image")
+      })
+      .then((response) => response.json())
+      .then((users) => {
+        usersData = users.users
+        const postsWithUsers = postsData.posts.map((post) => ({
+          ...post,
+          author: usersData.find((user) => user.id === post.userId),
+        }))
+        setPosts(postsWithUsers)
+        setTotal(postsData.total)
+      })
+      .catch((error) => {
+        console.error("게시물 가져오기 오류:", error)
+      })
+      .finally(() => {
+        setLoading(false)
+      })
   }
 
   // 태그 가져오기
@@ -181,6 +194,30 @@ const PostsManager = () => {
     }
   }
 
+  // 게시물 삭제
+  const deletePost = async (id) => {
+    try {
+      await fetch(`/api/posts/${id}`, {
+        method: "DELETE",
+      })
+      setPosts(posts.filter((post) => post.id !== id))
+    } catch (error) {
+      console.error("게시물 삭제 오류:", error)
+    }
+  }
+
+  // 댓글 가져오기
+  const fetchComments = async (postId) => {
+    if (comments[postId]) return // 이미 불러온 댓글이 있으면 다시 불러오지 않음
+    try {
+      const response = await fetch(`/api/comments/post/${postId}`)
+      const data = await response.json()
+      setComments((prev) => ({ ...prev, [postId]: data.comments }))
+    } catch (error) {
+      console.error("댓글 가져오기 오류:", error)
+    }
+  }
+
   // 댓글 추가
   const addComment = async () => {
     try {
@@ -255,9 +292,27 @@ const PostsManager = () => {
     }
   }
 
+  // 게시물 상세 보기
+  const openPostDetail = (post) => {
+    setSelectedPost(post)
+    fetchComments(post.id)
+    setShowPostDetailDialog(true)
+  }
+
+  // 사용자 모달 열기
+  const openUserModal = async (user) => {
+    try {
+      const response = await fetch(`/api/users/${user.id}`)
+      const userData = await response.json()
+      setSelectedUser(userData)
+      setShowUserModal(true)
+    } catch (error) {
+      console.error("사용자 정보 가져오기 오류:", error)
+    }
+  }
+
   useEffect(() => {
     fetchTags()
-    fetchUsers()
   }, [])
 
   useEffect(() => {
@@ -293,6 +348,134 @@ const PostsManager = () => {
       </span>
     )
   }
+
+  // 게시물 테이블 렌더링
+  const renderPostTable = () => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-[50px]">ID</TableHead>
+          <TableHead>제목</TableHead>
+          <TableHead className="w-[150px]">작성자</TableHead>
+          <TableHead className="w-[150px]">반응</TableHead>
+          <TableHead className="w-[150px]">작업</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {posts.map((post) => (
+          <TableRow key={post.id}>
+            <TableCell>{post.id}</TableCell>
+            <TableCell>
+              <div className="space-y-1">
+                <div>{highlightText(post.title, searchQuery)}</div>
+
+                <div className="flex flex-wrap gap-1">
+                  {post.tags?.map((tag) => (
+                    <span
+                      key={tag}
+                      className={`px-1 text-[9px] font-semibold rounded-[4px] cursor-pointer ${
+                        selectedTag === tag
+                          ? "text-white bg-blue-500 hover:bg-blue-600"
+                          : "text-blue-800 bg-blue-100 hover:bg-blue-200"
+                      }`}
+                      onClick={() => {
+                        setSelectedTag(tag)
+                        updateURL()
+                      }}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div className="flex items-center space-x-2 cursor-pointer" onClick={() => openUserModal(post.author)}>
+                <img src={post.author?.image} alt={post.author?.username} className="w-8 h-8 rounded-full" />
+                <span>{post.author?.username}</span>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div className="flex items-center gap-2">
+                <ThumbsUp className="w-4 h-4" />
+                <span>{post.reactions?.likes || 0}</span>
+                <ThumbsDown className="w-4 h-4" />
+                <span>{post.reactions?.dislikes || 0}</span>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => openPostDetail(post)}>
+                  <MessageSquare className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedPost(post)
+                    setShowEditDialog(true)
+                  }}
+                >
+                  <Edit2 className="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => deletePost(post.id)}>
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )
+
+  // 댓글 렌더링
+  const renderComments = (postId) => (
+    <div className="mt-2">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-semibold">댓글</h3>
+        <Button
+          size="sm"
+          onClick={() => {
+            setNewComment((prev) => ({ ...prev, postId }))
+            setShowAddCommentDialog(true)
+          }}
+        >
+          <Plus className="w-3 h-3 mr-1" />
+          댓글 추가
+        </Button>
+      </div>
+      <div className="space-y-1">
+        {comments[postId]?.map((comment) => (
+          <div key={comment.id} className="flex items-center justify-between text-sm border-b pb-1">
+            <div className="flex items-center space-x-2 overflow-hidden">
+              <span className="font-medium truncate">{comment.user.username}:</span>
+              <span className="truncate">{highlightText(comment.body, searchQuery)}</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <Button variant="ghost" size="sm" onClick={() => likeComment(comment.id, postId)}>
+                <ThumbsUp className="w-3 h-3" />
+                <span className="ml-1 text-xs">{comment.likes}</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSelectedComment(comment)
+                  setShowEditCommentDialog(true)
+                }}
+              >
+                <Edit2 className="w-3 h-3" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => deleteComment(comment.id, postId)}>
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 
   return (
     <Card className="w-full max-w-6xl mx-auto">
@@ -364,7 +547,7 @@ const PostsManager = () => {
           </div>
 
           {/* 게시물 테이블 */}
-          {loading ? <div className="flex justify-center p-4">로딩 중...</div> : <PostTable />}
+          {loading ? <div className="flex justify-center p-4">로딩 중...</div> : renderPostTable()}
 
           {/* 페이지네이션 */}
           <div className="flex justify-between items-center">
@@ -425,8 +608,7 @@ const PostsManager = () => {
 
       {/* 게시물 수정 대화상자 */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <EditPostDialog />
-        {/* <DialogContent>
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>게시물 수정</DialogTitle>
           </DialogHeader>
@@ -444,27 +626,88 @@ const PostsManager = () => {
             />
             <Button onClick={updatePost}>게시물 업데이트</Button>
           </div>
-        </DialogContent> */}
+        </DialogContent>
       </Dialog>
 
       {/* 댓글 추가 대화상자 */}
       <Dialog open={showAddCommentDialog} onOpenChange={setShowAddCommentDialog}>
-        <AddCommentDialog />
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>새 댓글 추가</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Textarea
+              placeholder="댓글 내용"
+              value={newComment.body}
+              onChange={(e) => setNewComment({ ...newComment, body: e.target.value })}
+            />
+            <Button onClick={addComment}>댓글 추가</Button>
+          </div>
+        </DialogContent>
       </Dialog>
 
       {/* 댓글 수정 대화상자 */}
       <Dialog open={showEditCommentDialog} onOpenChange={setShowEditCommentDialog}>
-        <EditCommentDialog />
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>댓글 수정</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Textarea
+              placeholder="댓글 내용"
+              value={selectedComment?.body || ""}
+              onChange={(e) => setSelectedComment({ ...selectedComment, body: e.target.value })}
+            />
+            <Button onClick={updateComment}>댓글 업데이트</Button>
+          </div>
+        </DialogContent>
       </Dialog>
 
       {/* 게시물 상세 보기 대화상자 */}
       <Dialog open={showPostDetailDialog} onOpenChange={setShowPostDetailDialog}>
-        <PostDetailDialog />
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{highlightText(selectedPost?.title, searchQuery)}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p>{highlightText(selectedPost?.body, searchQuery)}</p>
+            {renderComments(selectedPost?.id)}
+          </div>
+        </DialogContent>
       </Dialog>
 
       {/* 사용자 모달 */}
-      <Dialog open={showUserModal} onOpenChange={(show) => setShowUserModal(show)}>
-        <UserModal />
+      <Dialog open={showUserModal} onOpenChange={setShowUserModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>사용자 정보</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <img src={selectedUser?.image} alt={selectedUser?.username} className="w-24 h-24 rounded-full mx-auto" />
+            <h3 className="text-xl font-semibold text-center">{selectedUser?.username}</h3>
+            <div className="space-y-2">
+              <p>
+                <strong>이름:</strong> {selectedUser?.firstName} {selectedUser?.lastName}
+              </p>
+              <p>
+                <strong>나이:</strong> {selectedUser?.age}
+              </p>
+              <p>
+                <strong>이메일:</strong> {selectedUser?.email}
+              </p>
+              <p>
+                <strong>전화번호:</strong> {selectedUser?.phone}
+              </p>
+              <p>
+                <strong>주소:</strong> {selectedUser?.address?.address}, {selectedUser?.address?.city},{" "}
+                {selectedUser?.address?.state}
+              </p>
+              <p>
+                <strong>직장:</strong> {selectedUser?.company?.name} - {selectedUser?.company?.title}
+              </p>
+            </div>
+          </div>
+        </DialogContent>
       </Dialog>
     </Card>
   )

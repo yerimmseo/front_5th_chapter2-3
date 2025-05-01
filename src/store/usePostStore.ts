@@ -4,14 +4,18 @@ const usePostStore = create((set, get) => ({
   posts: [],
   total: 0,
   selectedPost: null,
+  newPost: { title: "", body: "", userId: 1 },
   loading: false,
+  skip: 0,
+  limit: 10,
 
-  setSelectedPost: (post) => set({ selectedPost: post }),
+  setSelectedPost: (selectedPost) => set({ selectedPost }),
+  setNewPost: (newPost) => set({ newPost }),
 
-  fetchPosts: async (limit, skip) => {
+  fetchPosts: async () => {
     set({ loading: true })
     try {
-      const response = await fetch(`/api/posts?limit=${limit}&skip=${skip}`)
+      const response = await fetch(`/api/posts?limit=${get().limit}&skip=${get().skip}`)
       const data = await response.json()
 
       set({ posts: data.posts, total: data.total, loading: false })
@@ -19,7 +23,6 @@ const usePostStore = create((set, get) => ({
       return data
     } catch (error) {
       console.error("게시물 가져오기 오류:", error)
-    } finally {
       set({ loading: false })
     }
   },
@@ -37,7 +40,6 @@ const usePostStore = create((set, get) => ({
       set({ posts: data.posts, total: data.total, loading: false })
     } catch (error) {
       console.error("게시물 검색 오류:", error)
-    } finally {
       set({ loading: false })
     }
   },
@@ -55,7 +57,6 @@ const usePostStore = create((set, get) => ({
       set({ posts: data.posts, total: data.total, loading: false })
     } catch (error) {
       console.error("태그별 게시물 가져오기 오류:", error)
-    } finally {
       set({ loading: false })
     }
   },
@@ -74,7 +75,6 @@ const usePostStore = create((set, get) => ({
       return data
     } catch (error) {
       console.error("게시물 추가 오류:", error)
-    } finally {
       set({ loading: false })
     }
   },
